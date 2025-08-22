@@ -19,7 +19,7 @@ st.set_page_config(
 @st.cache_data
 def load_errata_data():
     """Load errata data from CSV file."""
-    csv_path = Path("output/errata_changes.csv")
+    csv_path = Path("src/output/errata_changes.csv")
     sample_path = Path("sample_data.csv")
     
     # Try to load the real data first
