@@ -20,17 +20,28 @@ st.set_page_config(
 def load_errata_data():
     """Load errata data from CSV file."""
     csv_path = Path("output/errata_changes.csv")
+    sample_path = Path("sample_data.csv")
     
-    if not csv_path.exists():
-        st.error(f"CSV file not found at {csv_path}. Please run the extraction script first.")
-        return None
+    # Try to load the real data first, fallback to sample data
+    if csv_path.exists():
+        try:
+            df = pd.read_csv(csv_path)
+            return df
+        except Exception as e:
+            st.warning(f"Error loading main CSV file: {e}. Using sample data.")
     
-    try:
-        df = pd.read_csv(csv_path)
-        return df
-    except Exception as e:
-        st.error(f"Error loading CSV file: {e}")
-        return None
+    # Use sample data for deployment or when main file doesn't exist
+    if sample_path.exists():
+        try:
+            df = pd.read_csv(sample_path)
+            st.info("📋 Displaying sample data. Upload your errata_changes.csv to the output/ folder for real data.")
+            return df
+        except Exception as e:
+            st.error(f"Error loading sample data: {e}")
+            return None
+    
+    st.error("No data files found. Please ensure either output/errata_changes.csv or sample_data.csv exists.")
+    return None
 
 def format_resource_info(resource, location, page_numbers):
     """Format resource, location, and page numbers into a single string."""
