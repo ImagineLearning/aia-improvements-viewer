@@ -1,0 +1,28 @@
+
+# VPN-friendly Selenium configuration:
+
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+chrome_options = Options()
+
+# VPN-friendly options
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--disable-web-security")
+chrome_options.add_argument("--allow-running-insecure-content")
+chrome_options.add_argument("--ignore-certificate-errors")
+chrome_options.add_argument("--ignore-ssl-errors")
+chrome_options.add_argument("--ignore-certificate-errors-spki-list")
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--remote-debugging-port=9222")
+
+# Corporate proxy settings (if needed)
+# chrome_options.add_argument("--proxy-server=http://proxy.company.com:8080")
+
+# Disable images and CSS for faster loading
+chrome_options.add_experimental_option("prefs", {
+    "profile.managed_default_content_settings.images": 2,
+    "profile.default_content_setting_values.notifications": 2
+})

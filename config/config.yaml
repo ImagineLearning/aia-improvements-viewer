@@ -1,0 +1,60 @@
+logging:
+  file: ./logs/errata_locator.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+login:
+  password_field: '#user_password, #password, input[name=''user[password]'']'
+  submit_button: input[type='submit'], button[type='submit'], .btn-primary
+  success_indicator: .dashboard, .main-content, .user-menu, .header-user
+  username_field: '#user_email, #email, input[name=''user[email]'']'
+output:
+  backup_path: ./output/backups/
+  csv_columns:
+  - Date_Extracted
+  - Grade_Level
+  - Unit
+  - Resource
+  - Location
+  - Instructional_Moment
+  - Page_Numbers
+  - Improvement_Description
+  - Improvement_Type
+  - Date_Updated
+  csv_path: ./output/errata_changes.csv
+scraping:
+  delay_between_requests: 2
+  max_retries: 3
+  timeout: 30
+  user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+selectors:
+  accordion_button: .section-accordion button[aria-expanded="false"]
+  component_field: td:nth-child(1)
+  date_updated: td:nth-child(3)
+  errata_container: .section-accordion
+  errata_table: .section-accordion table
+  improvement_description: td:nth-child(2)
+  improvement_type: ''
+  instructional_moment_field: ''
+  location_field: ''
+  page_numbers: ''
+  resource_field: td:nth-child(1)
+  table_rows: tbody tr
+  unit_field: ''
+  unit_name: .section-accordion button
+  unit_section: .section-accordion
+website:
+  base_url: http://sdphiladelphia.ilclassroom.com
+  errata_pages:
+  - /wikis/29245717-kindergarten-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.9879318%2FWiki.10424770
+  - /wikis/18746473-grade-1-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.9879318%2FWiki.10430165
+  - /wikis/22363201-grade-2-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.9879318%2FWiki.10430165
+  - /wikis/20575807-grade-3-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.9879318%2FWiki.10430165
+  - /wikis/20629144-grade-4-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.9879318%2FWiki.10430165
+  - /wikis/23994038-grade-5-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.9879318%2FWiki.10430165
+  - /wikis/20692555-grade-6-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.10690424%2FWiki.10793887
+  - /wikis/20728766-grade-7-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.10690424%2FWiki.10793887
+  - /wikis/24417288-grade-8-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.10690424%2FWiki.10793887
+  - /wikis/34717795-algebra-1-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.10563159%2FWiki.10669204
+  - /wikis/34803461-geometry-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.10563159%2FWiki.10685998
+  - /wikis/34897218-algebra-2-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.10563159%2FWiki.10669204
+  login_url: /login

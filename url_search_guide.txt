@@ -1,0 +1,26 @@
+
+# URL Search Strategy for Missing Errata Pages
+
+## Method 1: Manual Navigation
+1. Log into https://sdphiladelphia.ilclassroom.com
+2. Navigate to the main curriculum/errata section
+3. Look for grade-level sections
+4. Copy URLs for each grade's errata page
+
+## Method 2: URL Pattern Guessing
+Based on the patterns observed, try these potential URLs:
+
+### Elementary Grades (2-5)
+Look for URLs following this pattern:
+https://sdphiladelphia.ilclassroom.com/wikis/[ID]-grade-[X]-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.9879318%2FWiki.[specific-id]
+
+### Middle School (7-8)  
+Look for URLs following this pattern:
+https://sdphiladelphia.ilclassroom.com/wikis/[ID]-grade-[X]-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.10690424%2FWiki.[specific-id]
+
+### High School (Algebra 2)
+Look for URLs following this pattern:
+https://sdphiladelphia.ilclassroom.com/wikis/[ID]-algebra-2-errata?path=Wiki.11180076%2FWiki.28930691%2FWiki.10563159%2FWiki.[specific-id]
+
+## Method 3: Use the URL Discovery Tool
+Run this script with authentication to crawl and discover URLs automatically.
