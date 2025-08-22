@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ImagineLearning/otk-schema-validator/main/il.yaml/v1.0.json
+
+
+meta:
+  owner: AIA
+  trackingId: 87b2338d-3ea4-45cc-bd63-73d1f4a73a71
+  domain: content
+  system: cdev
+
+otk:
+  enabled: true
+  build:
+    platform: amd64
+    linuxDistribution: ubuntu
+    language: python
+    languageVersion: "3.10"
+  deployables:
+    - ./service.yaml
+  resources:
+    - ./resources.yaml
+  deployConfig:
+    environments:
+      - dev
+
+# catalog:
+
+spartanzBot:
+  fileChecker:
+    enabled: true
+    comment: true

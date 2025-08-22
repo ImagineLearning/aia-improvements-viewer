@@ -1,0 +1,65 @@
+global:
+  name: aia-improvements-viewer
+  type: service
+
+deployment:
+  image:
+    cmd: streamlit run streamlit_app.py --server.port=8501 --theme.base dark
+  availabilityCheck:
+    path: /healthz
+    port: 8501
+  architecture: amd64
+  monitoring:
+    promEnabled: false
+  service:
+    access:
+      public: true
+      internal: false
+    port: 8501
+    adminPort: 8501
+  env:
+    - name: PORT
+      value: 8501
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1024Mi
+    limits:
+      cpu: 500m
+      memory: 2048Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 1
+    targetCPUUtilizationPercentage: 60
+
+  aws:
+    enabled: true
+    permissions:
+      - service: s3
+        accessType: full
+        resources:
+          - name: aia-hb-scriptbuilder
+
+  egress:
+    FQDNs:
+      - eastus2.api.cognitive.microsoft.com
+      - eastus.api.cognitive.microsoft.com
+  secrets:
+    - secretName: aia-hb-scriptbuilder
+      name: AZURE_API_KEY
+      property: AZURE_API_KEY
+    - secretName: aia-hb-scriptbuilder
+      name: AZURE_ENDPOINT
+      property: AZURE_ENDPOINT
+    - secretName: aia-hb-scriptbuilder
+      name: AZURE_API_VERSION
+      property: AZURE_API_VERSION
+    - secretName: aia-hb-scriptbuilder
+      name: AZURE_DEPLOYMENT
+      property: AZURE_DEPLOYMENT
+
+namespaces:
+  dev:
+    autoscaling:
+      maxReplicas: 1

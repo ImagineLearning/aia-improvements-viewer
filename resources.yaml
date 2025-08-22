@@ -1,0 +1,8 @@
+metadata:
+  name: aia-improvements-viewer
+  type: S3Bucket
+  version: v1alpha1
+  product: aia-improvements-viewer
+spec:
+  resourceConfig:
+    dataClassification: "restricted" 

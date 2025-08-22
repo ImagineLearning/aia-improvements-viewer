@@ -31,8 +31,7 @@ ENV/
 config/.env
 .env
 
-# Output Files
-output/errata_changes.csv
+# Output Files (Keep main CSV for deployment, exclude backups and logs)
 output/backups/
 logs/
 *.log

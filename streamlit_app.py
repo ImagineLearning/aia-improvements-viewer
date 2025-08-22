@@ -22,25 +22,26 @@ def load_errata_data():
     csv_path = Path("output/errata_changes.csv")
     sample_path = Path("sample_data.csv")
     
-    # Try to load the real data first, fallback to sample data
+    # Try to load the real data first
     if csv_path.exists():
         try:
             df = pd.read_csv(csv_path)
+            st.success("📊 Displaying current errata data from latest extraction.")
             return df
         except Exception as e:
             st.warning(f"Error loading main CSV file: {e}. Using sample data.")
     
-    # Use sample data for deployment or when main file doesn't exist
+    # Use sample data as fallback
     if sample_path.exists():
         try:
             df = pd.read_csv(sample_path)
-            st.info("📋 Displaying sample data. Upload your errata_changes.csv to the output/ folder for real data.")
+            st.info("📋 Displaying sample data. Run the extraction script to get current data.")
             return df
         except Exception as e:
             st.error(f"Error loading sample data: {e}")
             return None
     
-    st.error("No data files found. Please ensure either output/errata_changes.csv or sample_data.csv exists.")
+    st.error("No data files found. Please run the extraction script to generate data.")
     return None
 
 def format_resource_info(resource, location, page_numbers):
