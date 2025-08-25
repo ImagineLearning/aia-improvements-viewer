@@ -1,0 +1,22 @@
+apiversion: v2
+name: aia-improvements-viewer
+version: 1.0.0
+kubeversion: ""
+description: ""
+type: application
+keywords: []
+home: ""
+sources: []
+dependencies:
+- name: otk-service
+  version: 1.1.4
+  repository: oci://984077369330.dkr.ecr.us-east-2.amazonaws.com
+  condition: ""
+  tags: []
+  importvalues: []
+  alias: aia-improvements-viewer
+maintainers: []
+icon: ""
+appversion: ""
+deprecated: false
+annotations: {}
