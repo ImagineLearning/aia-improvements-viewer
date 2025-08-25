@@ -6,7 +6,7 @@ global:
   githubRepo: ImagineLearning/aia-improvements-viewer
 aia-improvements-viewer:
   name: aia-improvements-viewer
-  version: 2025.8.25-18e1857
+  version: 2025.8.25-5e11291
   pathToDeployableFile: service.yaml
   architecture: amd64
   autoscaling:
@@ -24,10 +24,6 @@ aia-improvements-viewer:
       resources:
       - name: aia-hb-scriptbuilder
       service: s3
-  egress:
-    FQDNs:
-    - eastus2.api.cognitive.microsoft.com
-    - eastus.api.cognitive.microsoft.com
   env:
   - name: PORT
     value: 8501
@@ -42,19 +38,6 @@ aia-improvements-viewer:
     requests:
       cpu: 100m
       memory: 1024Mi
-  secrets:
-  - name: AZURE_API_KEY
-    property: AZURE_API_KEY
-    secretName: aia-hb-scriptbuilder
-  - name: AZURE_ENDPOINT
-    property: AZURE_ENDPOINT
-    secretName: aia-hb-scriptbuilder
-  - name: AZURE_API_VERSION
-    property: AZURE_API_VERSION
-    secretName: aia-hb-scriptbuilder
-  - name: AZURE_DEPLOYMENT
-    property: AZURE_DEPLOYMENT
-    secretName: aia-hb-scriptbuilder
   service:
     access:
       internal: false
