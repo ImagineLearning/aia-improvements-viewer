@@ -211,26 +211,38 @@ def show_grade_unit_view(df):
     else:
         st.warning("Please select both a grade level and unit to view improvements.")
 
-def classify_content_type(resource_text):
+def classify_content_type(resource_text, description_text=None):
     """
-    Classify content as Student-facing, Teacher-facing, or Ambiguous based on resource text.
+    Classify content as Student-facing, Teacher-facing, or Ambiguous based on resource text and description.
     
     Args:
         resource_text: The resource description text
+        description_text: The improvement description text (optional for secondary filtering)
     
     Returns:
         str: 'Teacher-facing', 'Student-facing', or 'Ambiguous'
     """
     if pd.isna(resource_text) or not resource_text:
-        return 'Ambiguous'
+        resource_text = ""
+    
+    if pd.isna(description_text) or not description_text:
+        description_text = ""
     
     resource_lower = str(resource_text).lower()
+    description_lower = str(description_text).lower()
     
-    # Teacher-facing keywords (checked first)
+    # Teacher-facing keywords (checked first - higher priority)
     teacher_keywords = [
         'teacher', 'teacher edition', 'teacher guide', 'answer key', 
         'solutions', 'rubric', 'scoring guide', 'responding to student thinking', 
         'notes', 'script'
+    ]
+    
+    # Additional teacher-facing keywords for description filtering
+    teacher_description_keywords = [
+        'responding to student thinking', 'teacher guide', 'answer key',
+        'scoring guide', 'rubric', 'teacher edition', 'instructor',
+        'facilitator', 'teaching notes', 'pedagogical'
     ]
     
     # Student-facing keywords
@@ -240,12 +252,17 @@ def classify_content_type(resource_text):
         'checkpoint', 'quiz', 'test', 'exit ticket'
     ]
     
-    # Check for teacher-facing content first (higher priority)
+    # Check for teacher-facing content in resource first (higher priority)
     for keyword in teacher_keywords:
         if keyword in resource_lower:
             return 'Teacher-facing'
     
-    # Then check for student-facing content
+    # Secondary check: Teacher-facing content in description
+    for keyword in teacher_description_keywords:
+        if keyword in description_lower:
+            return 'Teacher-facing'
+    
+    # Then check for student-facing content in resource
     for keyword in student_keywords:
         if keyword in resource_lower:
             return 'Student-facing'
@@ -262,7 +279,10 @@ def show_student_facing_report(df):
     
     # Add content type classification to dataframe
     df_with_classification = df.copy()
-    df_with_classification['Content_Type'] = df_with_classification['Resource'].apply(classify_content_type)
+    df_with_classification['Content_Type'] = df_with_classification.apply(
+        lambda row: classify_content_type(row['Resource'], row['Improvement_Description']), 
+        axis=1
+    )
     
     # Content type filter
     st.subheader("🎯 Content Filter")
@@ -357,7 +377,7 @@ def show_student_facing_report(df):
     
     # Export button
     if st.button("📥 Export as CSV", type="secondary"):
-        csv_data = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Location', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
+        csv_data = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
         csv_string = csv_data.to_csv(index=False)
         content_type_filename = content_filter.lower().replace('-', '_').replace(' ', '_')
         st.download_button(
@@ -370,40 +390,93 @@ def show_student_facing_report(df):
     # Display data in a table format organized by date
     st.subheader(f"📋 Detailed {content_filter} Report")
     
-    # Create a cleaner display dataframe
-    display_df = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Location', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
+    # Create a cleaner display dataframe (excluding Location since it's all N/A)
+    display_df = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
     
     # Rename columns for better display
-    display_df.columns = ['Date Updated', 'Grade Level', 'Unit', 'Resource', 'Location', 'Page Numbers', 'Description', 'Content Type']
+    display_df.columns = ['Date Updated', 'Grade Level', 'Unit', 'Resource', 'Page Numbers', 'Description', 'Content Type']
     
     # Fill NaN values for better display
     display_df = display_df.fillna('N/A')
     
-    # Display as dataframe with sorting capability
+    # Configure column widths and text wrapping (removed Location column)
+    column_config = {
+        "Date Updated": st.column_config.TextColumn(width="medium"),
+        "Grade Level": st.column_config.TextColumn(width="medium"),
+        "Unit": st.column_config.TextColumn(width="medium"),
+        "Resource": st.column_config.TextColumn(width="medium"),
+        "Page Numbers": st.column_config.TextColumn(width="small"),
+        "Description": st.column_config.TextColumn(
+            width="large",
+            help="Full description of the improvement"
+        ),
+        "Content Type": st.column_config.TextColumn(width="medium")
+    }
+    
+    # Display as dataframe with text wrapping and sorting capability
     st.dataframe(
         display_df,
         use_container_width=True,
-        height=600
+        height=600,
+        column_config=column_config
     )
     
-    # Also show expandable detailed view
-    st.subheader("🔍 Detailed View")
+    # Organize detailed view by grade level in tabs
+    st.subheader("🔍 Detailed View by Grade Level")
     
-    for idx, (_, row) in enumerate(filtered_df.iterrows(), 1):
+    if len(selected_grades) == 1:
+        # If only one grade selected, show without tabs
+        grade = selected_grades[0]
+        grade_data = filtered_df[filtered_df['Grade_Level'] == grade]
+        _display_grade_improvements(grade_data, grade)
+    else:
+        # Multiple grades - use tabs for organization
+        grade_tabs = st.tabs([f"📚 {grade}" for grade in selected_grades])
+        
+        for i, grade in enumerate(selected_grades):
+            with grade_tabs[i]:
+                grade_data = filtered_df[filtered_df['Grade_Level'] == grade]
+                _display_grade_improvements(grade_data, grade)
+
+    # Footer
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("*Improvement Viewer v1.0*")
+    if not filtered_df.empty:
+        last_extracted = filtered_df['Date_Extracted'].iloc[0]
+        if pd.notna(last_extracted):
+            st.sidebar.caption(f"Last updated: {last_extracted}")
+        else:
+            st.sidebar.caption("Last updated: Unknown")
+
+def _display_grade_improvements(grade_data, grade_name):
+    """Helper function to display improvements for a specific grade level."""
+    if grade_data.empty:
+        st.info(f"No improvements found for {grade_name}")
+        return
+    
+    st.markdown(f"**{len(grade_data)} improvement(s) for {grade_name}**")
+    
+    # Sort by date for this grade
+    try:
+        grade_data = grade_data.sort_values('Date_Updated_Sort', ascending=False, na_last=True)
+    except:
+        pass
+    
+    # Display improvements as expandable cards
+    for idx, (_, row) in enumerate(grade_data.iterrows(), 1):
         date_str = row.get('Date_Updated', 'Unknown Date')
-        grade_str = row.get('Grade_Level', 'Unknown Grade')
         content_type = row.get('Content_Type', 'Unknown')
+        unit_str = row.get('Unit', 'Unknown Unit')
         
         # Add emoji based on content type
         emoji = "👨‍🏫" if content_type == "Teacher-facing" else "👨‍🎓"
         
-        with st.expander(f"📅 {date_str} - {grade_str} - {emoji} {content_type} - Change {idx}", expanded=False):
+        with st.expander(f"{emoji} {unit_str} - {date_str} - Change {idx}", expanded=False):
             col1, col2 = st.columns([1, 2])
             
             with col1:
                 st.markdown("**Change Details:**")
                 st.write(f"**Content Type:** {content_type}")
-                st.write(f"**Grade:** {row.get('Grade_Level', 'N/A')}")
                 st.write(f"**Unit:** {row.get('Unit', 'N/A')}")
                 st.write(f"**Resource:** {row.get('Resource', 'N/A')}")
                 st.write(f"**Location:** {row.get('Location', 'N/A')}")
@@ -418,16 +491,6 @@ def show_student_facing_report(df):
                     st.write(str(improvement_desc))
                 else:
                     st.write('No description available')
-
-    # Footer
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("*Improvement Viewer v1.0*")
-    if df is not None and not df.empty:
-        last_extracted = df['Date_Extracted'].iloc[0]
-        if pd.notna(last_extracted):
-            st.sidebar.caption(f"Last updated: {last_extracted}")
-        else:
-            st.sidebar.caption("Last updated: Unknown")
 
 if __name__ == "__main__":
     main()
