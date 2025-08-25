@@ -77,6 +77,18 @@ def main():
     if df is None:
         st.stop()
     
+    # Create tabs
+    tab1, tab2 = st.tabs(["📖 Grade & Unit View", "📊 Student-Facing Report"])
+    
+    with tab1:
+        show_grade_unit_view(df)
+    
+    with tab2:
+        show_student_facing_report(df)
+
+def show_grade_unit_view(df):
+    """Display the original grade and unit filtering view."""
+    
     # Sidebar filters
     st.sidebar.header("🔍 Filters")
     
@@ -198,6 +210,214 @@ def main():
     
     else:
         st.warning("Please select both a grade level and unit to view improvements.")
+
+def classify_content_type(resource_text):
+    """
+    Classify content as Student-facing, Teacher-facing, or Ambiguous based on resource text.
+    
+    Args:
+        resource_text: The resource description text
+    
+    Returns:
+        str: 'Teacher-facing', 'Student-facing', or 'Ambiguous'
+    """
+    if pd.isna(resource_text) or not resource_text:
+        return 'Ambiguous'
+    
+    resource_lower = str(resource_text).lower()
+    
+    # Teacher-facing keywords (checked first)
+    teacher_keywords = [
+        'teacher', 'teacher edition', 'teacher guide', 'answer key', 
+        'solutions', 'rubric', 'scoring guide', 'responding to student thinking', 
+        'notes', 'script'
+    ]
+    
+    # Student-facing keywords
+    student_keywords = [
+        'student workbook', 'student', 'practice problem', 'warm-up', 
+        'cool-down', 'activity', 'task', 'lesson', 'assessment', 
+        'checkpoint', 'quiz', 'test', 'exit ticket'
+    ]
+    
+    # Check for teacher-facing content first (higher priority)
+    for keyword in teacher_keywords:
+        if keyword in resource_lower:
+            return 'Teacher-facing'
+    
+    # Then check for student-facing content
+    for keyword in student_keywords:
+        if keyword in resource_lower:
+            return 'Student-facing'
+    
+    # If ambiguous (including cases where both teacher & student appear or generic labels)
+    # Based on your note, ambiguous items are teacher-facing
+    return 'Teacher-facing'
+
+def show_student_facing_report(df):
+    """Display the student-facing report view with date-based organization."""
+    
+    st.header("📊 Student-Facing Content Report")
+    st.markdown("*View all student-facing improvements organized by date*")
+    
+    # Add content type classification to dataframe
+    df_with_classification = df.copy()
+    df_with_classification['Content_Type'] = df_with_classification['Resource'].apply(classify_content_type)
+    
+    # Content type filter
+    st.subheader("🎯 Content Filter")
+    content_filter = st.radio(
+        "Select content type to display:",
+        options=['Student-facing', 'Teacher-facing', 'All Content'],
+        index=0,  # Default to Student-facing
+        horizontal=True,
+        help="Filter improvements by whether they affect student-facing or teacher-facing materials"
+    )
+    
+    # Apply content filter
+    if content_filter == 'Student-facing':
+        filtered_by_content = df_with_classification[df_with_classification['Content_Type'] == 'Student-facing'].copy()
+    elif content_filter == 'Teacher-facing':
+        filtered_by_content = df_with_classification[df_with_classification['Content_Type'] == 'Teacher-facing'].copy()
+    else:  # All Content
+        filtered_by_content = df_with_classification.copy()
+    
+    # Get unique grade levels for multi-select
+    grade_levels = filtered_by_content['Grade_Level'].unique()
+    
+    # Define the correct educational order
+    grade_order = [
+        'Kindergarten',
+        'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 
+        'Grade 6', 'Grade 7', 'Grade 8',
+        'Algebra 1', 'Geometry', 'Algebra 2'
+    ]
+    
+    # Sort grade levels according to educational order
+    sorted_grade_levels = []
+    for grade in grade_order:
+        if grade in grade_levels:
+            sorted_grade_levels.append(grade)
+    
+    # Add any grades not in our predefined order
+    for grade in grade_levels:
+        if grade not in sorted_grade_levels:
+            sorted_grade_levels.append(grade)
+    
+    # Multi-select for grades
+    selected_grades = st.multiselect(
+        "📚 Select Grade Level(s):",
+        options=sorted_grade_levels,
+        default=sorted_grade_levels,  # Default to all grades
+        help="Select one or more grade levels to include in the report"
+    )
+    
+    if not selected_grades:
+        st.warning("Please select at least one grade level to view the report.")
+        return
+    
+    # Filter data by selected grades
+    filtered_df = filtered_by_content[filtered_by_content['Grade_Level'].isin(selected_grades)].copy()
+    
+    if filtered_df.empty:
+        st.warning(f"No {content_filter.lower()} content found for the selected grade levels.")
+        return
+    
+    # Sort by date (most recent first)
+    try:
+        filtered_df['Date_Updated_Sort'] = pd.to_datetime(filtered_df['Date_Updated'], errors='coerce')
+        filtered_df = filtered_df.sort_values('Date_Updated_Sort', ascending=False, na_last=True)
+    except:
+        pass
+    
+    # Create report summary with content type breakdown
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Changes", len(filtered_df))
+    with col2:
+        st.metric("Grade Levels", len(selected_grades))
+    with col3:
+        unique_dates = filtered_df['Date_Updated'].nunique()
+        st.metric("Update Dates", unique_dates)
+    with col4:
+        st.metric("Content Type", content_filter)
+    
+    # Show content type distribution for transparency
+    if content_filter == 'All Content':
+        st.subheader("📈 Content Type Distribution")
+        content_counts = df_with_classification['Content_Type'].value_counts()
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Student-facing", content_counts.get('Student-facing', 0))
+        with col2:
+            st.metric("Teacher-facing", content_counts.get('Teacher-facing', 0))
+        with col3:
+            total_classified = content_counts.get('Student-facing', 0) + content_counts.get('Teacher-facing', 0)
+            st.metric("Total Classified", total_classified)
+    
+    # Export button
+    if st.button("📥 Export as CSV", type="secondary"):
+        csv_data = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Location', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
+        csv_string = csv_data.to_csv(index=False)
+        content_type_filename = content_filter.lower().replace('-', '_').replace(' ', '_')
+        st.download_button(
+            label="Download CSV",
+            data=csv_string,
+            file_name=f"{content_type_filename}_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv"
+        )
+    
+    # Display data in a table format organized by date
+    st.subheader(f"📋 Detailed {content_filter} Report")
+    
+    # Create a cleaner display dataframe
+    display_df = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Location', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
+    
+    # Rename columns for better display
+    display_df.columns = ['Date Updated', 'Grade Level', 'Unit', 'Resource', 'Location', 'Page Numbers', 'Description', 'Content Type']
+    
+    # Fill NaN values for better display
+    display_df = display_df.fillna('N/A')
+    
+    # Display as dataframe with sorting capability
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        height=600
+    )
+    
+    # Also show expandable detailed view
+    st.subheader("🔍 Detailed View")
+    
+    for idx, (_, row) in enumerate(filtered_df.iterrows(), 1):
+        date_str = row.get('Date_Updated', 'Unknown Date')
+        grade_str = row.get('Grade_Level', 'Unknown Grade')
+        content_type = row.get('Content_Type', 'Unknown')
+        
+        # Add emoji based on content type
+        emoji = "👨‍🏫" if content_type == "Teacher-facing" else "👨‍🎓"
+        
+        with st.expander(f"📅 {date_str} - {grade_str} - {emoji} {content_type} - Change {idx}", expanded=False):
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                st.markdown("**Change Details:**")
+                st.write(f"**Content Type:** {content_type}")
+                st.write(f"**Grade:** {row.get('Grade_Level', 'N/A')}")
+                st.write(f"**Unit:** {row.get('Unit', 'N/A')}")
+                st.write(f"**Resource:** {row.get('Resource', 'N/A')}")
+                st.write(f"**Location:** {row.get('Location', 'N/A')}")
+                if pd.notna(row.get('Page_Numbers')) and row.get('Page_Numbers'):
+                    st.write(f"**Pages:** {row.get('Page_Numbers')}")
+                st.write(f"**Date Updated:** {date_str}")
+            
+            with col2:
+                st.markdown("**Description:**")
+                improvement_desc = row.get('Improvement_Description', 'No description available')
+                if pd.notna(improvement_desc) and improvement_desc:
+                    st.write(str(improvement_desc))
+                else:
+                    st.write('No description available')
 
     # Footer
     st.sidebar.markdown("---")
