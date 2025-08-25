@@ -43,7 +43,7 @@ def main():
     
     # Load configuration
     try:
-        with open('config/config.yaml', 'r') as f:
+        with open('src/config/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
         logger.info("Configuration loaded successfully")
     except Exception as e:
