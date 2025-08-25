@@ -10,8 +10,9 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 WORKDIR /app
 
 COPY ./src src/
-COPY ./config config/
-COPY ./streamlit_app.py streamlit_app.py
+COPY ./src/config config/
+COPY ./src/output output/
+COPY ./src/streamlit_app.py streamlit_app.py
 
 # Create output directory for CSV files
 RUN mkdir -p output
