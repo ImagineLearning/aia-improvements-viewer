@@ -41,23 +41,6 @@ deployment:
         resources:
           - name: aia-hb-scriptbuilder
 
-  egress:
-    FQDNs:
-      - eastus2.api.cognitive.microsoft.com
-      - eastus.api.cognitive.microsoft.com
-  secrets:
-    - secretName: aia-hb-scriptbuilder
-      name: AZURE_API_KEY
-      property: AZURE_API_KEY
-    - secretName: aia-hb-scriptbuilder
-      name: AZURE_ENDPOINT
-      property: AZURE_ENDPOINT
-    - secretName: aia-hb-scriptbuilder
-      name: AZURE_API_VERSION
-      property: AZURE_API_VERSION
-    - secretName: aia-hb-scriptbuilder
-      name: AZURE_DEPLOYMENT
-      property: AZURE_DEPLOYMENT
 
 namespaces:
   dev:
