@@ -107,9 +107,19 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        
+        # Add only the files we want to commit (respect .gitignore)
         git add output/sample_errata_changes.csv
-        git add output/backups/
-        git add logs/
+        
+        # Add logs if they exist and aren't ignored
+        if [ -d "logs" ] && [ -n "$(ls -A logs 2>/dev/null)" ]; then
+          git add logs/ || echo "Logs directory ignored or not found"
+        fi
+        
+        # Show what we're about to commit
+        echo "Files to be committed:"
+        git diff --cached --name-only
+        
         git commit -m "🤖 Daily errata update - $(date +'%Y-%m-%d %H:%M UTC')"
         git push origin main
     
