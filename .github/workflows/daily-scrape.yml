@@ -25,7 +25,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget unzip
+        sudo apt-get install -y wget unzip xvfb
         
         # Install Chrome
         wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -33,12 +33,31 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
         
-        # Install ChromeDriver
-        CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f3 | cut -d '.' -f1-3)
-        CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
-        wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
-        sudo unzip /tmp/chromedriver.zip -d /usr/local/bin/
+        # Get Chrome version
+        CHROME_VERSION=$(google-chrome --version | sed 's/Google Chrome //' | cut -d '.' -f1-3)
+        echo "Chrome version: $CHROME_VERSION"
+        
+        # Install ChromeDriver using the new Chrome for Testing API
+        # Get the latest stable ChromeDriver version that matches Chrome
+        CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_$CHROME_VERSION" 2>/dev/null || echo "")
+        
+        # If that fails, try getting the latest stable version
+        if [ -z "$CHROMEDRIVER_VERSION" ]; then
+          echo "Specific version not found, getting latest stable..."
+          CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE")
+        fi
+        
+        echo "ChromeDriver version: $CHROMEDRIVER_VERSION"
+        
+        # Download and install ChromeDriver from new location
+        wget -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
+        sudo unzip /tmp/chromedriver.zip -d /tmp/
+        sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
         sudo chmod +x /usr/local/bin/chromedriver
+        
+        # Verify installations
+        google-chrome --version
+        chromedriver --version
     
     - name: Install Python dependencies
       run: |
@@ -50,9 +69,27 @@ jobs:
         echo "ERRATA_USERNAME=${{ secrets.ERRATA_USERNAME }}" > .env
         echo "ERRATA_PASSWORD=${{ secrets.ERRATA_PASSWORD }}" >> .env
     
+    - name: Debug environment
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Python version: $(python --version)"
+        echo "Files in current directory:"
+        ls -la
+        echo "Files in src directory:"
+        ls -la src/ || echo "No src directory found"
+        echo "Environment variables:"
+        env | grep -E "(GITHUB|CI|ERRATA)" || echo "No relevant env vars"
+    
+    - name: Create necessary directories
+      run: |
+        mkdir -p logs
+        mkdir -p output/backups
+    
     - name: Run errata scraper
       run: |
+        echo "Starting extraction..."
         python extract_all.py
+        echo "Extraction completed"
     
     - name: Check for changes
       id: check_changes
