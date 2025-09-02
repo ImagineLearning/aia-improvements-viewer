@@ -53,8 +53,6 @@ jobs:
     - name: Run errata scraper
       run: |
         python extract_all.py
-      env:
-        DISPLAY: :99
     
     - name: Check for changes
       id: check_changes
