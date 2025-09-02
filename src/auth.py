@@ -43,6 +43,13 @@ class WebAuthenticator:
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         
+        # Add headless mode for CI environments (GitHub Actions)
+        if os.getenv('CI') or os.getenv('GITHUB_ACTIONS'):
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--window-size=1920,1080')
+            self.logger.info("Running in CI mode - Chrome will run headless")
+        
         try:
             # Use system Chrome directly (no WebDriverManager)
             driver = webdriver.Chrome(options=chrome_options)
