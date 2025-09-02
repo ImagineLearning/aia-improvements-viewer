@@ -20,7 +20,7 @@ output:
   - Improvement_Description
   - Improvement_Type
   - Date_Updated
-  csv_path: ./output/errata_changes.csv
+  csv_path: ./output/sample_errata_changes.csv
 scraping:
   delay_between_requests: 2
   max_retries: 3
