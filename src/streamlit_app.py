@@ -155,6 +155,16 @@ def main():
 def show_grade_unit_view(df):
     """Display the original grade and unit filtering view."""
     
+    # Check if required columns exist
+    required_columns = ['Grade_Level', 'Unit', 'Resource', 'Improvement_Description']
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    
+    if missing_columns:
+        st.error(f"❌ Missing required columns: {missing_columns}")
+        st.error(f"Available columns: {list(df.columns)}")
+        st.info("Please check that the data file has been properly generated with all required columns.")
+        return
+    
     # Sidebar filters
     st.sidebar.header("🔍 Filters")
     
@@ -350,6 +360,16 @@ def classify_content_type(resource_text, description_text=None):
 
 def show_student_facing_report(df):
     """Display the student-facing report view with date-based organization."""
+    
+    # Check if required columns exist
+    required_columns = ['Grade_Level', 'Unit', 'Resource', 'Improvement_Description', 'Date_Updated']
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    
+    if missing_columns:
+        st.error(f"❌ Missing required columns: {missing_columns}")
+        st.error(f"Available columns: {list(df.columns)}")
+        st.info("Please check that the data file has been properly generated with all required columns.")
+        return
     
     #st.header("📊 Custom Reports")
     #st.markdown("*Create custom Views of all improvements*")
