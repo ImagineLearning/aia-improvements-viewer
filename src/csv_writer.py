@@ -25,6 +25,87 @@ class CSVWriter:
         self.csv_path.parent.mkdir(parents=True, exist_ok=True)
         self.backup_path.mkdir(parents=True, exist_ok=True)
     
+    def normalize_date(self, date_str: str) -> str:
+        """
+        Normalize various date formats to YYYY-MM-DD format.
+        
+        Args:
+            date_str: Date string in various formats
+            
+        Returns:
+            str: Normalized date in YYYY-MM-DD format or original string if parsing fails
+        """
+        if not date_str or pd.isna(date_str):
+            return ""
+        
+        date_str = str(date_str).strip()
+        
+        # If already in YYYY-MM-DD format, return as-is
+        if len(date_str) == 10 and date_str.count('-') == 2:
+            try:
+                # Validate it's a proper date
+                datetime.strptime(date_str, '%Y-%m-%d')
+                return date_str
+            except ValueError:
+                pass
+        
+        # Try various common formats
+        formats_to_try = [
+            '%m/%d/%y',      # 8/4/25
+            '%m/%d/%Y',      # 8/4/2025
+            '%m-%d-%y',      # 8-4-25
+            '%m-%d-%Y',      # 8-4-2025
+            '%Y-%m-%d',      # 2025-08-28
+            '%Y/%m/%d',      # 2025/08/28
+            '%d/%m/%y',      # 4/8/25 (day first)
+            '%d/%m/%Y',      # 4/8/2025 (day first)
+        ]
+        
+        for fmt in formats_to_try:
+            try:
+                parsed_date = datetime.strptime(date_str, fmt)
+                # Convert 2-digit years to 4-digit (assume 2000s)
+                if parsed_date.year < 100:
+                    if parsed_date.year < 50:  # 00-49 -> 2000-2049
+                        parsed_date = parsed_date.replace(year=parsed_date.year + 2000)
+                    else:  # 50-99 -> 1950-1999
+                        parsed_date = parsed_date.replace(year=parsed_date.year + 1900)
+                
+                return parsed_date.strftime('%Y-%m-%d')
+            except ValueError:
+                continue
+        
+        # If all parsing fails, log warning and return original
+        self.logger.warning(f"Could not parse date format: '{date_str}', keeping original")
+        return date_str
+    
+    def normalize_errata_dates(self, errata_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Normalize date formats in errata records.
+        
+        Args:
+            errata_list: List of errata records
+            
+        Returns:
+            List[Dict[str, Any]]: Errata records with normalized dates
+        """
+        normalized_list = []
+        
+        for errata in errata_list:
+            normalized_errata = errata.copy()
+            
+            # Normalize Date_Updated field if it exists
+            if 'Date_Updated' in normalized_errata:
+                normalized_errata['Date_Updated'] = self.normalize_date(normalized_errata['Date_Updated'])
+            
+            # Normalize Date_Extracted field if it exists
+            if 'Date_Extracted' in normalized_errata:
+                normalized_errata['Date_Extracted'] = self.normalize_date(normalized_errata['Date_Extracted'])
+            
+            normalized_list.append(normalized_errata)
+        
+        return normalized_list
+    
     def create_backup(self) -> bool:
         """
         Create a backup of the existing CSV file.
@@ -64,15 +145,18 @@ class CSVWriter:
             bool: True if write successful
         """
         try:
-            # Add extraction timestamp to each record
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Normalize date formats first
+            normalized_errata = self.normalize_errata_dates(errata_list)
             
-            for errata in errata_list:
-                if 'Date_Extracted' not in errata:
+            # Add extraction timestamp to each record
+            current_time = datetime.now().strftime("%Y-%m-%d")  # Use consistent YYYY-MM-DD format
+            
+            for errata in normalized_errata:
+                if 'Date_Extracted' not in errata or not errata['Date_Extracted']:
                     errata['Date_Extracted'] = current_time
             
             # Convert to DataFrame for easier manipulation
-            df = pd.DataFrame(errata_list)
+            df = pd.DataFrame(normalized_errata)
             
             # Ensure all required columns are present
             for col in self.columns:
@@ -86,7 +170,7 @@ class CSVWriter:
             write_header = mode == 'w' or not self.csv_path.exists()
             df.to_csv(self.csv_path, mode=mode, index=False, header=write_header, encoding='utf-8')
             
-            self.logger.info(f"Successfully wrote {len(errata_list)} errata records to {self.csv_path}")
+            self.logger.info(f"Successfully wrote {len(normalized_errata)} errata records to {self.csv_path}")
             return True
             
         except Exception as e:

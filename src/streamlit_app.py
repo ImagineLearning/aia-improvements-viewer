@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 import os
 from pathlib import Path
+from datetime import datetime
 
 # Configure the page
 st.set_page_config(
@@ -16,22 +17,87 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+def normalize_date_for_display(date_str):
+    """
+    Normalize date string to consistent YYYY-MM-DD format for display.
+    
+    Args:
+        date_str: Date string in various formats
+        
+    Returns:
+        str: Normalized date in YYYY-MM-DD format or original if parsing fails
+    """
+    if not date_str or pd.isna(date_str):
+        return ""
+    
+    date_str = str(date_str).strip()
+    
+    # If already in YYYY-MM-DD format, return as-is
+    if len(date_str) == 10 and date_str.count('-') == 2:
+        try:
+            datetime.strptime(date_str, '%Y-%m-%d')
+            return date_str
+        except ValueError:
+            pass
+    
+    # Try various common formats
+    formats_to_try = [
+        '%m/%d/%y',      # 8/4/25
+        '%m/%d/%Y',      # 8/4/2025
+        '%m-%d-%y',      # 8-4-25
+        '%m-%d-%Y',      # 8-4-2025
+        '%Y-%m-%d',      # 2025-08-28
+        '%Y/%m/%d',      # 2025/08/28
+    ]
+    
+    for fmt in formats_to_try:
+        try:
+            parsed_date = datetime.strptime(date_str, fmt)
+            # Convert 2-digit years to 4-digit (assume 2000s)
+            if parsed_date.year < 100:
+                if parsed_date.year < 50:
+                    parsed_date = parsed_date.replace(year=parsed_date.year + 2000)
+                else:
+                    parsed_date = parsed_date.replace(year=parsed_date.year + 1900)
+            
+            return parsed_date.strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    
+    return date_str  # Return original if can't parse
+
 @st.cache_data
 def load_errata_data():
     """Load errata data from CSV file."""
-    csv_path = Path("src/output/errata_changes.csv")
+    # Updated to use the correct path where automation saves data
+    csv_path = Path("output/sample_errata_changes.csv")
+    fallback_path = Path("src/output/sample_errata_changes.csv")
     sample_path = Path("sample_data.csv")
     
-    # Try to load the real data first
+    # Try to load the main data file (updated by automation)
     if csv_path.exists():
         try:
             df = pd.read_csv(csv_path)
-            st.success("📊 Displaying current errata data from latest extraction.")
+            # Get the last extraction date from the data
+            if 'Date_Extracted' in df.columns and not df['Date_Extracted'].empty:
+                last_extraction = df['Date_Extracted'].iloc[0]
+                st.success(f"📊 Displaying data collected at 7:00AM EST on {last_extraction}.")
+            else:
+                st.success("📊 Displaying current errata data from latest extraction.")
             return df
         except Exception as e:
-            st.warning(f"Error loading main CSV file: {e}. Using sample data.")
+            st.warning(f"Error loading main CSV file: {e}. Trying fallback location.")
     
-    # Use sample data as fallback
+    # Try fallback location
+    if fallback_path.exists():
+        try:
+            df = pd.read_csv(fallback_path)
+            st.info("📊 Displaying errata data from fallback location.")
+            return df
+        except Exception as e:
+            st.warning(f"Error loading fallback CSV file: {e}. Using sample data.")
+    
+    # Use sample data as last resort
     if sample_path.exists():
         try:
             df = pd.read_csv(sample_path)
@@ -78,7 +144,7 @@ def main():
         st.stop()
     
     # Create tabs
-    tab1, tab2 = st.tabs(["📖 Grade & Unit View", "📊 Student-Facing Report"])
+    tab1, tab2 = st.tabs(["📖 Grade & Unit View", "📊 Custom Reports"])
     
     with tab1:
         show_grade_unit_view(df)
@@ -152,12 +218,23 @@ def show_grade_unit_view(df):
             st.header(f"📖 {selected_grade} - {selected_unit}")
             st.markdown(f"**{len(filtered_df)} improvement(s) found**")
             
-            # Sort by date updated (most recent first)
+            # Sort by date updated (most recent first) with better date handling
             try:
-                # Convert date column to datetime for sorting
-                filtered_df['Date_Updated_Sort'] = pd.to_datetime(filtered_df['Date_Updated'], errors='coerce')
-                filtered_df = filtered_df.sort_values('Date_Updated_Sort', ascending=False, na_last=True)
-            except:
+                # Normalize dates first
+                filtered_df['Date_Updated_Normalized'] = filtered_df['Date_Updated'].apply(normalize_date_for_display)
+                # Convert normalized date column to datetime for sorting
+                filtered_df['Date_Updated_Sort'] = pd.to_datetime(
+                    filtered_df['Date_Updated_Normalized'], 
+                    format='%Y-%m-%d', 
+                    errors='coerce'
+                )
+                # Sort with backward compatibility
+                try:
+                    filtered_df = filtered_df.sort_values('Date_Updated_Sort', ascending=False, na_position='last')
+                except TypeError:
+                    # Fallback for older pandas versions or compatibility issues
+                    filtered_df = filtered_df.sort_values('Date_Updated_Sort', ascending=False)
+            except Exception as e:
                 # If date conversion fails, just use original order
                 pass
             
@@ -274,8 +351,8 @@ def classify_content_type(resource_text, description_text=None):
 def show_student_facing_report(df):
     """Display the student-facing report view with date-based organization."""
     
-    st.header("📊 Student-Facing Content Report")
-    st.markdown("*View all student-facing improvements organized by date*")
+    #st.header("📊 Custom Reports")
+    #st.markdown("*Create custom Views of all improvements*")
     
     # Add content type classification to dataframe
     df_with_classification = df.copy()
@@ -284,15 +361,32 @@ def show_student_facing_report(df):
         axis=1
     )
     
-    # Content type filter
-    st.subheader("🎯 Content Filter")
-    content_filter = st.radio(
-        "Select content type to display:",
-        options=['Student-facing', 'Teacher-facing', 'All Content'],
-        index=0,  # Default to Student-facing
-        horizontal=True,
-        help="Filter improvements by whether they affect student-facing or teacher-facing materials"
-    )
+    # Content and date filters in column layout
+    st.subheader("🎯 Content Filters")
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        content_filter = st.radio(
+            "Select content type to display:",
+            options=['Student-facing', 'Teacher-facing', 'All Content'],
+            index=0,  # Default to Student-facing
+            horizontal=True,
+            help="Filter improvements by whether they affect student-facing or teacher-facing materials"
+        )
+    
+    with col2:
+        # Get earliest date from dataset for default
+        try:
+            all_dates = pd.to_datetime(df_with_classification['Date_Updated'], errors='coerce')
+            earliest_date = all_dates.min().date() if not all_dates.isna().all() else pd.Timestamp('2024-03-19').date()
+        except:
+            earliest_date = pd.Timestamp('2024-03-19').date()
+        
+        date_filter = st.date_input(
+            "Show changes after:",
+            value=earliest_date,
+            help="Select a date to view only changes made after that date"
+        )
     
     # Apply content filter
     if content_filter == 'Student-facing':
@@ -301,6 +395,22 @@ def show_student_facing_report(df):
         filtered_by_content = df_with_classification[df_with_classification['Content_Type'] == 'Teacher-facing'].copy()
     else:  # All Content
         filtered_by_content = df_with_classification.copy()
+    
+    # Apply date filter
+    try:
+        # Convert Date_Updated to datetime for comparison
+        filtered_by_content['Date_Updated_Datetime'] = pd.to_datetime(
+            filtered_by_content['Date_Updated'], 
+            errors='coerce'
+        )
+        # Filter by selected date
+        date_filter_datetime = pd.Timestamp(date_filter)
+        filtered_by_content = filtered_by_content[
+            filtered_by_content['Date_Updated_Datetime'] >= date_filter_datetime
+        ].copy()
+    except Exception as e:
+        st.warning(f"Date filtering issue: {e}. Showing all dates.")
+        pass
     
     # Get unique grade levels for multi-select
     grade_levels = filtered_by_content['Grade_Level'].unique()
@@ -343,55 +453,90 @@ def show_student_facing_report(df):
         st.warning(f"No {content_filter.lower()} content found for the selected grade levels.")
         return
     
-    # Sort by date (most recent first)
+    # Sort by date (most recent first) with better date handling
     try:
-        filtered_df['Date_Updated_Sort'] = pd.to_datetime(filtered_df['Date_Updated'], errors='coerce')
-        filtered_df = filtered_df.sort_values('Date_Updated_Sort', ascending=False, na_last=True)
-    except:
+        # Normalize dates first
+        filtered_df['Date_Updated_Normalized'] = filtered_df['Date_Updated'].apply(normalize_date_for_display)
+        # Parse normalized dates with explicit format
+        filtered_df['Date_Updated_Sort'] = pd.to_datetime(
+            filtered_df['Date_Updated_Normalized'], 
+            format='%Y-%m-%d', 
+            errors='coerce'
+        )
+        # Sort with backward compatibility
+        try:
+            filtered_df = filtered_df.sort_values('Date_Updated_Sort', ascending=False, na_position='last')
+        except TypeError:
+            # Fallback for older pandas versions or compatibility issues
+            filtered_df = filtered_df.sort_values('Date_Updated_Sort', ascending=False)
+    except Exception as e:
+        st.warning(f"Date sorting issue: {e}")
         pass
     
-    # Create report summary with content type breakdown
-    col1, col2, col3, col4 = st.columns(4)
+    #Separator
+    st.markdown("---")
+
+    # Create column layout for subheader and export buttons
+    col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 1])
+    
     with col1:
-        st.metric("Total Changes", len(filtered_df))
-    with col2:
-        st.metric("Grade Levels", len(selected_grades))
-    with col3:
-        unique_dates = filtered_df['Date_Updated'].nunique()
-        st.metric("Update Dates", unique_dates)
+        # Display data in a table format organized by date
+        st.subheader(f"📋 Detailed {content_filter} Report")
+    
     with col4:
-        st.metric("Content Type", content_filter)
+        # Export filtered data
+        if st.button("📥 Export Current View", type="secondary", help="Export data matching current filters"):
+            csv_data = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
+            csv_string = csv_data.to_csv(index=False)
+            content_type_filename = content_filter.lower().replace('-', '_').replace(' ', '_')
+            date_suffix = date_filter.strftime('%Y%m%d') if date_filter else 'all_dates'
+            st.download_button(
+                label="Download Filtered CSV",
+                data=csv_string,
+                file_name=f"{content_type_filename}_filtered_{date_suffix}_{pd.Timestamp.now().strftime('%H%M%S')}.csv",
+                mime="text/csv"
+            )
     
-    # Show content type distribution for transparency
-    if content_filter == 'All Content':
-        st.subheader("📈 Content Type Distribution")
-        content_counts = df_with_classification['Content_Type'].value_counts()
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Student-facing", content_counts.get('Student-facing', 0))
-        with col2:
-            st.metric("Teacher-facing", content_counts.get('Teacher-facing', 0))
-        with col3:
-            total_classified = content_counts.get('Student-facing', 0) + content_counts.get('Teacher-facing', 0)
-            st.metric("Total Classified", total_classified)
+    with col5:
+        # Export complete dataset
+        if st.button("📥 Export All Data", type="secondary", help="Export complete dataset (all filters ignored)"):
+            complete_data = df_with_classification[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
+            csv_string = complete_data.to_csv(index=False)
+            st.download_button(
+                label="Download Complete CSV",
+                data=csv_string,
+                file_name=f"complete_errata_data_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
     
-    # Export button
-    if st.button("📥 Export as CSV", type="secondary"):
-        csv_data = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
-        csv_string = csv_data.to_csv(index=False)
-        content_type_filename = content_filter.lower().replace('-', '_').replace(' ', '_')
-        st.download_button(
-            label="Download CSV",
-            data=csv_string,
-            file_name=f"{content_type_filename}_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv"
-        )
-    
-    # Display data in a table format organized by date
-    st.subheader(f"📋 Detailed {content_filter} Report")
+    # Ensure data is sorted by date (most recent first) before display
+    try:
+        # Re-apply sorting to ensure consistent ordering in the table
+        filtered_df_sorted = filtered_df.copy()
+        if 'Date_Updated_Sort' in filtered_df_sorted.columns:
+            # Use existing sort column if available
+            try:
+                filtered_df_sorted = filtered_df_sorted.sort_values('Date_Updated_Sort', ascending=False, na_position='last')
+            except TypeError:
+                filtered_df_sorted = filtered_df_sorted.sort_values('Date_Updated_Sort', ascending=False)
+        else:
+            # Create sort column if needed
+            filtered_df_sorted['Date_Updated_Normalized'] = filtered_df_sorted['Date_Updated'].apply(normalize_date_for_display)
+            filtered_df_sorted['Date_Updated_Sort'] = pd.to_datetime(
+                filtered_df_sorted['Date_Updated_Normalized'], 
+                format='%Y-%m-%d', 
+                errors='coerce'
+            )
+            try:
+                filtered_df_sorted = filtered_df_sorted.sort_values('Date_Updated_Sort', ascending=False, na_position='last')
+            except TypeError:
+                filtered_df_sorted = filtered_df_sorted.sort_values('Date_Updated_Sort', ascending=False)
+    except Exception as e:
+        # If sorting fails, use original dataframe
+        filtered_df_sorted = filtered_df.copy()
     
     # Create a cleaner display dataframe (excluding Location since it's all N/A)
-    display_df = filtered_df[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
+    display_df = filtered_df_sorted[['Date_Updated', 'Grade_Level', 'Unit', 'Resource', 'Page_Numbers', 'Improvement_Description', 'Content_Type']].copy()
     
     # Rename columns for better display
     display_df.columns = ['Date Updated', 'Grade Level', 'Unit', 'Resource', 'Page Numbers', 'Description', 'Content Type']
@@ -413,6 +558,9 @@ def show_student_facing_report(df):
         "Content Type": st.column_config.TextColumn(width="medium")
     }
     
+    # Add info about sorting
+    st.info("📅 Data is sorted by Date Updated (most recent first). You can click column headers to re-sort as needed.")
+    
     # Display as dataframe with text wrapping and sorting capability
     st.dataframe(
         display_df,
@@ -420,6 +568,34 @@ def show_student_facing_report(df):
         height=600,
         column_config=column_config
     )
+    st.subheader("📈 Content Type Distribution")
+    
+    # Create report summary with content type breakdown
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Changes", len(filtered_df))
+    with col2:
+        st.metric("Grade Levels", len(selected_grades))
+    with col3:
+        unique_dates = filtered_df['Date_Updated'].nunique()
+        st.metric("Update Dates", unique_dates)
+    with col4:
+        st.metric("Content Type", content_filter)
+        
+    # Show content type distribution for transparency (moved below table)
+    
+    content_counts = df_with_classification['Content_Type'].value_counts()
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Student-facing", content_counts.get('Student-facing', 0))
+    with col2:
+        st.metric("Teacher-facing", content_counts.get('Teacher-facing', 0))
+    with col3:
+        total_classified = content_counts.get('Student-facing', 0) + content_counts.get('Teacher-facing', 0)
+        st.metric("Total Classified", total_classified)
+        
+    #Separator 
+    st.markdown("---")
     
     # Organize detailed view by grade level in tabs
     st.subheader("🔍 Detailed View by Grade Level")
@@ -440,7 +616,7 @@ def show_student_facing_report(df):
 
     # Footer
     st.sidebar.markdown("---")
-    st.sidebar.markdown("*Improvement Viewer v1.0*")
+    st.sidebar.markdown("*Improvement Viewer v2.0*")
     if not filtered_df.empty:
         last_extracted = filtered_df['Date_Extracted'].iloc[0]
         if pd.notna(last_extracted):
