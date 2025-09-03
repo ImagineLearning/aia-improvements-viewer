@@ -11,7 +11,7 @@ WORKDIR /app
 
 COPY ./src src/
 COPY ./src/config config/
-COPY ./src/output output/
+COPY ./output output/
 COPY ./src/streamlit_app.py streamlit_app.py
 
 # Create output directory for CSV files
