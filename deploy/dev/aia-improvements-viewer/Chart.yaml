@@ -9,7 +9,7 @@ home: ""
 sources: []
 dependencies:
 - name: otk-service
-  version: 1.2.2
+  version: 1.2.4
   repository: oci://984077369330.dkr.ecr.us-east-2.amazonaws.com
   condition: ""
   tags: []
