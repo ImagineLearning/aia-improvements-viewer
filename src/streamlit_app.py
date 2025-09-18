@@ -175,8 +175,8 @@ def show_grade_unit_view(df):
     grade_order = [
         'Kindergarten',
         'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 
-        'Grade 6', 'Grade 7', 'Grade 8',
-        'Algebra 1', 'Geometry', 'Algebra 2'
+        'Grade 6', 'Grade 6 Accelerated', 'Grade 7', 'Grade 7 Accelerated', 'Grade 8',
+        'Algebra 1', 'Algebra 1 Supports', 'Geometry', 'Algebra 2'
     ]
     
     # Sort grade levels according to educational order
@@ -439,8 +439,8 @@ def show_student_facing_report(df):
     grade_order = [
         'Kindergarten',
         'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 
-        'Grade 6', 'Grade 7', 'Grade 8',
-        'Algebra 1', 'Geometry', 'Algebra 2'
+        'Grade 6', 'Grade 6 Accelerated', 'Grade 7', 'Grade 7 Accelerated', 'Grade 8',
+        'Algebra 1', 'Algebra 1 Supports', 'Geometry', 'Algebra 2'
     ]
     
     # Sort grade levels according to educational order

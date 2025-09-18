@@ -121,6 +121,8 @@ class ErrataParser:
             # Common grade level patterns
             grade_patterns = [
                 r'kindergarten',
+                r'accelerated[- ](\d+)',  # For "accelerated-6" and "accelerated-7"
+                r'algebra[- ](\d+)[- ]extra[- ]support',  # For "algebra-1-extra-support"
                 r'grade\s*(\d+)',
                 r'algebra\s*(\d+)',
                 r'geometry',
@@ -134,9 +136,13 @@ class ErrataParser:
                 if match:
                     if 'kindergarten' in pattern:
                         return 'Kindergarten'
+                    elif 'accelerated' in pattern:
+                        return f'Grade {match.group(1)} Accelerated'
+                    elif 'extra[- ]support' in pattern:
+                        return f'Algebra {match.group(1)} Supports'
                     elif 'grade' in pattern:
                         return f'Grade {match.group(1)}'
-                    elif 'algebra' in pattern:
+                    elif 'algebra' in pattern and 'extra' not in pattern:
                         return f'Algebra {match.group(1)}'
                     elif 'geometry' in pattern:
                         return 'Geometry'
@@ -151,6 +157,8 @@ class ErrataParser:
             url_patterns = [
                 (r'kindergarten', 'Kindergarten'),
                 (r'grade-(\d+)', 'Grade {}'),
+                (r'accelerated-(\d+)', 'Grade {} Accelerated'),  # For accelerated courses
+                (r'algebra-(\d+)-extra-support', 'Algebra {} Supports'),  # For support courses
                 (r'algebra-(\d+)', 'Algebra {}'),
                 (r'geometry', 'Geometry'),
                 (r'pre-algebra', 'Pre-Algebra'),
@@ -353,6 +361,8 @@ class ErrataParser:
         if page_title:
             grade_patterns = [
                 r'kindergarten',
+                r'accelerated[- ](\d+)',  # For "accelerated-6" and "accelerated-7"
+                r'algebra[- ](\d+)[- ]extra[- ]support',  # For "algebra-1-extra-support"
                 r'grade\s*(\d+)',
                 r'algebra\s*(\d+)',
                 r'geometry',
@@ -365,9 +375,13 @@ class ErrataParser:
                 if match:
                     if 'kindergarten' in pattern:
                         return 'Kindergarten'
+                    elif 'accelerated' in pattern:
+                        return f'Grade {match.group(1)} Accelerated'
+                    elif 'extra[- ]support' in pattern:
+                        return f'Algebra {match.group(1)} Supports'
                     elif 'grade' in pattern:
                         return f'Grade {match.group(1)}'
-                    elif 'algebra' in pattern:
+                    elif 'algebra' in pattern and 'extra' not in pattern:
                         return f'Algebra {match.group(1)}'
                     elif 'geometry' in pattern:
                         return 'Geometry'
@@ -381,6 +395,8 @@ class ErrataParser:
             url_patterns = [
                 (r'kindergarten', 'Kindergarten'),
                 (r'grade-(\d+)', 'Grade {}'),
+                (r'accelerated-(\d+)', 'Grade {} Accelerated'),  # For accelerated courses
+                (r'algebra-(\d+)-extra-support', 'Algebra {} Supports'),  # For support courses
                 (r'algebra-(\d+)', 'Algebra {}'),
                 (r'geometry', 'Geometry'),
                 (r'pre-algebra', 'Pre-Algebra'),
