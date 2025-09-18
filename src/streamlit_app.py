@@ -11,7 +11,7 @@ from datetime import datetime
 
 # Configure the page
 st.set_page_config(
-    page_title="Errata Viewer",
+    page_title="Improvements Viewer",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded"
