@@ -6,7 +6,7 @@ global:
   githubRepo: ImagineLearning/aia-improvements-viewer
 aia-improvements-viewer:
   name: aia-improvements-viewer
-  version: 2025.9.20-cdb09da
+  version: 2025.9.21-e7ec716
   pathToDeployableFile: service.yaml
   architecture: amd64
   autoscaling:
